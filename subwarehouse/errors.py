@@ -60,3 +60,18 @@ class ReceiptConflict(LedgerError):
                 loc += ":" + str(self.line)
             loc += ": "
         return loc + self.message
+
+
+class ReviewError(Exception):
+    """A refused correction-inventory operation.
+
+    Raised for an unusable inventory directory and for any invalid
+    correction order; an invalid order is refused as a whole and the
+    `item` attribute identifies the offending order item (window index
+    and, when known, the cue id) so the supplier can fix exactly it.
+    """
+
+    def __init__(self, message, item=None):
+        super().__init__(message)
+        self.message = message
+        self.item = item

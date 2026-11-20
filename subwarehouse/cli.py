@@ -7,9 +7,10 @@ import sys
 from . import __version__
 from .builder import build
 from .deliver_cli import add_parsers as add_ledger_parsers, run as run_ledger
-from .errors import (LedgerError, LibraryError, PackageError,
+from .errors import (LedgerError, LibraryError, PackageError, ReviewError,
                      TargetExistsError)
 from .library import FORMAT, inspect_frame, iter_segments, open_library
+from .review_cli import add_parsers as add_review_parsers, run as run_review
 
 
 def _cmd_build(args):
@@ -197,13 +198,19 @@ def main(argv=None):
                        "receipts / verify)")
     add_ledger_parsers(ledger.add_subparsers(dest="ledger_cmd", required=True))
 
+    rev = sub.add_parser(
+        "review", help="correction impact inventory (init / info / trial)")
+    add_review_parsers(rev.add_subparsers(dest="review_cmd", required=True))
+
     args = ap.parse_args(argv)
     try:
         if args.cmd == "ledger":
             return run_ledger(args)
+        if args.cmd == "review":
+            return run_review(args)
         return args.func(args)
     except (PackageError, TargetExistsError, LibraryError,
-            LedgerError) as exc:
+            LedgerError, ReviewError) as exc:
         print("error: %s" % exc, file=sys.stderr)
         return 2
     except OSError as exc:

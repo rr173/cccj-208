@@ -6,3 +6,5 @@ out/
 *.sqlite-journal
 *.lib-*.tmp
 *.stg-*.tmp
+*.inv-*.tmp
+*.trial-*.tmp

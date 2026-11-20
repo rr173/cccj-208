@@ -174,29 +174,8 @@ class Engine(object):
                 "WHERE asset = ? AND lang = ? ORDER BY start",
                 (asset, lang)), self.batch, self.stats, "coverage")
         cov = _union(cov)
-        cs, ce = next(cov, (None, None))
-        pos = 0
-
-        def classify(g0, g1):
-            nonlocal cs, ce
-            x = g0
-            while x < g1:
-                while cs is not None and ce <= x:
-                    cs, ce = next(cov, (None, None))
-                if cs is None or cs >= g1:
-                    out.write((x, g1, "unknown", None, None))
-                    return
-                if cs > x:
-                    out.write((x, min(cs, g1), "unknown", None, None))
-                    x = min(cs, g1)
-                else:
-                    x = min(ce, g1)   # covered: transparent, not stored
-
-        for s, e, cid, text in cues:
-            classify(pos, s)
-            out.write((s, e, "cue", cid, text))
-            pos = e
-        classify(pos, frames)
+        for s, e, state, cid, text in asset_segments(frames, cues, cov):
+            out.write((s, e, state, cid, text))
         out.flush()
         self.stg.execute("CREATE INDEX %s_i ON %s(start)" % (tbl, tbl))
         self.aseg_tbl[key] = tbl
@@ -244,39 +223,7 @@ class Engine(object):
             return
         streams = [self._track_segments(seq, t, lang, frames)
                    for t in tracks]
-        currents = [next(s) for s in streams]
-        pos = 0
-        pending = None
-        while pos < frames:
-            for c in currents:            # invariant: each stream covers pos
-                if not (c[0] <= pos < c[1]):
-                    raise AssertionError(
-                        "track stream desynchronized in %r: segment %s "
-                        "does not cover %d" % (seq, c[:2], pos))
-            nxt = min(c[1] for c in currents)
-            win = None
-            for c in currents:            # tracks already high -> low
-                if c[2] != TRANSPARENT:
-                    win = c
-                    break
-            if win is None:
-                seg = (pos, nxt, TRANSPARENT, None, None, None, ())
-            else:
-                seg = (pos, nxt) + win[2:]
-            if pending is not None and pending[2:] == seg[2:] \
-                    and pending[1] == seg[0]:
-                pending = (pending[0], seg[1]) + pending[2:]
-            else:
-                if pending is not None:
-                    emit(pending)
-                pending = seg
-            pos = nxt
-            if pos < frames:
-                for i, c in enumerate(currents):
-                    if c[1] == pos:
-                        currents[i] = next(streams[i])
-        if pending is not None:
-            emit(pending)
+        merge_streams(streams, 0, frames, emit, context=repr(seq))
 
     def _track_segments(self, seq, track, lang, frames):
         """Yield a full partition of [0, frames) for one track: opaque
@@ -369,3 +316,84 @@ def _union(intervals):
             cs, ce = s, e
     if cs is not None:
         yield cs, ce
+
+
+def asset_segments(frames, cues, cov_union):
+    """Opaque segments of one (asset, lang): cue intervals plus unknown
+    gaps outside checked coverage.
+
+    `cues` yields (start, end, cue_id, text) sorted by start; `cov_union`
+    yields the sorted, merged checked-coverage intervals.  Yields
+    (start, end, state, cue_id, text) with state cue|unknown; covered
+    frames without a cue are transparent and not yielded.
+    """
+    it = iter(cov_union)
+    cs, ce = next(it, (None, None))
+    pos = 0
+
+    def classify(g0, g1):
+        nonlocal cs, ce
+        x = g0
+        while x < g1:
+            while cs is not None and ce <= x:
+                cs, ce = next(it, (None, None))
+            if cs is None or cs >= g1:
+                yield (x, g1, "unknown", None, None)
+                return
+            if cs > x:
+                yield (x, min(cs, g1), "unknown", None, None)
+                x = min(cs, g1)
+            else:
+                x = min(ce, g1)   # covered: transparent, not yielded
+
+    for s, e, cid, text in cues:
+        for seg in classify(pos, s):
+            yield seg
+        yield (s, e, "cue", cid, text)
+        pos = e
+    for seg in classify(pos, frames):
+        yield seg
+
+
+def merge_streams(streams, lo, hi, emit, context="sequence"):
+    """Overlay track streams, highest priority first, and emit the merged
+    segmentation of [lo, hi) via `emit(seg)`.
+
+    Each stream must partition [lo, hi) with segments
+    (start, end, state, ...) ordered by start; the first non-transparent
+    stream wins each frame.  Adjacent segments with identical identity
+    (everything after start/end) are merged.
+    """
+    currents = [next(s) for s in streams]
+    pos = lo
+    pending = None
+    while pos < hi:
+        for c in currents:            # invariant: each stream covers pos
+            if not (c[0] <= pos < c[1]):
+                raise AssertionError(
+                    "track stream desynchronized in %s: segment %s "
+                    "does not cover %d" % (context, c[:2], pos))
+        nxt = min(c[1] for c in currents)
+        win = None
+        for c in currents:            # streams already high -> low
+            if c[2] != TRANSPARENT:
+                win = c
+                break
+        if win is None:
+            seg = (pos, nxt, TRANSPARENT, None, None, None, ())
+        else:
+            seg = (pos, nxt) + win[2:]
+        if pending is not None and pending[2:] == seg[2:] \
+                and pending[1] == seg[0]:
+            pending = (pending[0], seg[1]) + pending[2:]
+        else:
+            if pending is not None:
+                emit(pending)
+            pending = seg
+        pos = nxt
+        if pos < hi:
+            for i, c in enumerate(currents):
+                if c[1] == pos:
+                    currents[i] = next(streams[i])
+    if pending is not None:
+        emit(pending)
