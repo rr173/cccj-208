@@ -72,3 +72,34 @@ class TempDirTest(unittest.TestCase):
 
     def dir_listing(self):
         return sorted(os.listdir(self.tmp))
+
+
+# ---------------------------------------------------------------------------
+# Delivery-ledger helpers
+# ---------------------------------------------------------------------------
+
+def write_json(path, obj):
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(obj, fh, ensure_ascii=False)
+    return path
+
+
+class LedgerTest(TempDirTest):
+    """Builds libraries through the ordinary builder and opens a ledger."""
+
+    def build_ledger(self, name="ledger.sqlite"):
+        from subwarehouse import deliver
+        path = os.path.join(self.tmp, name)
+        conn = deliver.init_ledger(path)
+        self.addCleanup(conn.close)
+        return conn, path
+
+    def shard_table(self, frames, sizes, prefix="s"):
+        out = []
+        pos = 0
+        for i, size in enumerate(sizes):
+            out.append({"name": "%s%d" % (prefix, i), "start": pos,
+                        "end": pos + size})
+            pos += size
+        assert pos == frames
+        return out

@@ -6,7 +6,9 @@ import sys
 
 from . import __version__
 from .builder import build
-from .errors import LibraryError, PackageError, TargetExistsError
+from .deliver_cli import add_parsers as add_ledger_parsers, run as run_ledger
+from .errors import (LedgerError, LibraryError, PackageError,
+                     TargetExistsError)
 from .library import FORMAT, inspect_frame, iter_segments, open_library
 
 
@@ -190,10 +192,18 @@ def main(argv=None):
     i.add_argument("--json", action="store_true", help="JSON output")
     i.set_defaults(func=_cmd_inspect)
 
+    ledger = sub.add_parser(
+        "ledger", help="incremental delivery ledger (register / dispatch / "
+                       "receipts / verify)")
+    add_ledger_parsers(ledger.add_subparsers(dest="ledger_cmd", required=True))
+
     args = ap.parse_args(argv)
     try:
+        if args.cmd == "ledger":
+            return run_ledger(args)
         return args.func(args)
-    except (PackageError, TargetExistsError, LibraryError) as exc:
+    except (PackageError, TargetExistsError, LibraryError,
+            LedgerError) as exc:
         print("error: %s" % exc, file=sys.stderr)
         return 2
     except OSError as exc:

@@ -30,3 +30,33 @@ class TargetExistsError(Exception):
 
 class LibraryError(Exception):
     """The target file is not a readable subwarehouse library."""
+
+
+class LedgerError(Exception):
+    """A refused delivery-ledger operation (registration, conflict, ...)."""
+
+
+class LedgerStateError(LedgerError):
+    """The delivery ledger violates one of its documented invariants."""
+
+
+class ReceiptConflict(LedgerError):
+    """A receipt input contradicts receipts already on file.
+
+    Raising this rejects the *whole input*; nothing from it is committed.
+    """
+
+    def __init__(self, message, file=None, line=None):
+        super().__init__(message)
+        self.message = message
+        self.file = file
+        self.line = line
+
+    def __str__(self):
+        loc = ""
+        if self.file is not None:
+            loc = str(self.file)
+            if self.line is not None:
+                loc += ":" + str(self.line)
+            loc += ": "
+        return loc + self.message
