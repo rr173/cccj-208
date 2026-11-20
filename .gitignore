@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+out/
+*.sqlite
+*.sqlite-journal
+*.lib-*.tmp
+*.stg-*.tmp

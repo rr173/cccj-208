@@ -1,0 +1,4 @@
+{"id": "s-rev", "seq": "S", "track": 0, "start": 0, "end": 10, "kind": "asset", "ref": "M", "base": 9, "p": -1, "q": 1}
+{"id": "r-bottom", "seq": "R", "track": 0, "start": 2, "end": 17, "kind": "seq", "ref": "S", "base": 0, "p": 2, "q": 3}
+{"id": "r-top-n", "seq": "R", "track": 1, "start": 4, "end": 9, "kind": "asset", "ref": "N", "base": 0, "p": 1, "q": 1}
+{"id": "r-blank", "seq": "R", "track": 1, "start": 11, "end": 12, "kind": "blank"}

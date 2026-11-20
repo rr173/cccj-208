@@ -1,0 +1,32 @@
+"""Error types for subwarehouse."""
+
+
+class PackageError(Exception):
+    """Invalid input package or record.
+
+    Carries the originating file and 1-based line number when known so the
+    handover team can locate the rejected record in the original delivery.
+    """
+
+    def __init__(self, message, file=None, line=None):
+        super().__init__(message)
+        self.message = message
+        self.file = file
+        self.line = line
+
+    def __str__(self):
+        loc = ""
+        if self.file is not None:
+            loc = str(self.file)
+            if self.line is not None:
+                loc += ":" + str(self.line)
+            loc += ": "
+        return loc + self.message
+
+
+class TargetExistsError(Exception):
+    """The target library path already exists; builds never overwrite."""
+
+
+class LibraryError(Exception):
+    """The target file is not a readable subwarehouse library."""

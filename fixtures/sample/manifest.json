@@ -1,0 +1,14 @@
+{
+  "package": "sample-handover",
+  "languages": [
+    "zho"
+  ],
+  "assets": {
+    "M": 10,
+    "N": 5
+  },
+  "sequences": {
+    "S": 10,
+    "R": 20
+  }
+}
