@@ -8,3 +8,4 @@ out/
 *.stg-*.tmp
 *.inv-*.tmp
 *.trial-*.tmp
+*.corpus-*.tmp

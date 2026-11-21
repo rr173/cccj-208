@@ -75,3 +75,19 @@ class ReviewError(Exception):
         super().__init__(message)
         self.message = message
         self.item = item
+
+
+class CorpusError(Exception):
+    """A refused corpus-export operation.
+
+    Raised for any invalid batch input (sample sheet, library list,
+    mapping table, grant table, previous registry) and for an unusable
+    output location.  An invalid batch is refused as a whole: nothing is
+    published.  `item` identifies the offending input record when known
+    (for example {"sample": "s17"} or {"mapping": 3}).
+    """
+
+    def __init__(self, message, item=None):
+        super().__init__(message)
+        self.message = message
+        self.item = item
